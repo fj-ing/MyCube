@@ -52,8 +52,7 @@ void setup() {
   pinMode(ENC1_2, INPUT);
   attachInterrupt(ENC1_1, ENC1_READ, CHANGE);
   attachInterrupt(ENC1_2, ENC1_READ, CHANGE);
-  ledcSetup(PWM1_CH, BASE_FREQ, TIMER_BIT);
-  ledcAttachPin(PWM1, PWM1_CH);
+  ledcAttach(PWM1, BASE_FREQ, TIMER_BIT);  // 直接绑定引脚
   Motor1_control(0);
   
   pinMode(DIR2, OUTPUT);
@@ -61,8 +60,7 @@ void setup() {
   pinMode(ENC2_2, INPUT);
   attachInterrupt(ENC2_1, ENC2_READ, CHANGE);
   attachInterrupt(ENC2_2, ENC2_READ, CHANGE);
-  ledcSetup(PWM2_CH, BASE_FREQ, TIMER_BIT);
-  ledcAttachPin(PWM2, PWM2_CH);
+  ledcAttach(PWM2, BASE_FREQ, TIMER_BIT);  // 直接绑定引脚
   Motor2_control(0);
   
   pinMode(DIR3, OUTPUT);
@@ -70,8 +68,7 @@ void setup() {
   pinMode(ENC3_2, INPUT);
   attachInterrupt(ENC3_1, ENC3_READ, CHANGE);
   attachInterrupt(ENC3_2, ENC3_READ, CHANGE);
-  ledcSetup(PWM3_CH, BASE_FREQ, TIMER_BIT);
-  ledcAttachPin(PWM3, PWM3_CH);
+  ledcAttach(PWM3, BASE_FREQ, TIMER_BIT);  // 直接绑定引脚
   Motor3_control(0);
 
   EEPROM.get(0, offsets);
@@ -87,7 +84,17 @@ void loop() {
   currentT = millis();
   if (currentT - previousT_1 >= loop_time) {
     Tuning();
+    SerialTuning(); 
     angle_calc();
+
+    Serial.print("AcX: "); Serial.print(AcX);
+    Serial.print(" | AcY: "); Serial.print(AcY);
+    Serial.print(" | AcZ: "); Serial.print(AcZ);
+    Serial.print(" | GyX: "); Serial.print(GyX);
+    Serial.print(" | GyY: "); Serial.print(GyY);
+    Serial.print(" | GyZ: "); Serial.print(GyZ);
+    Serial.print(" | AngleX: "); Serial.print(robot_angleX);
+    Serial.print(" | AngleY: "); Serial.println(robot_angleY);
 
     motor1_speed = enc_count1;
     enc_count1 = 0;
@@ -110,7 +117,7 @@ void loop() {
       int pwm_Y = constrain(K1 * robot_angleY + K2 * gyroYfilt + K3 * speed_Y + K4 * motors_speed_Y, -255, 255);
       int pwm_Z = constrain(zK2 * gyroZ + zK3 * motors_speed_Z, -255, 255);
 
-      motors_speed_X += speed_X / 5; 
+      motors_speed_X += speed_X / 5;
       motors_speed_Y += speed_Y / 5;
       XYZ_to_threeWay(-pwm_X, pwm_Y, -pwm_Z);
     } else if (vertical_edge && calibrated && !calibrating) {

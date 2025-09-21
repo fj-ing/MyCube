@@ -60,7 +60,7 @@ float eK2 = 31.00;
 float eK3 = 2.5;
 float eK4 = 0.014;
 
-int loop_time = 15;
+int loop_time = 8;
 
 struct OffsetsObj {
   int ID;
