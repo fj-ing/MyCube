@@ -212,7 +212,7 @@ void Motor1_control(int sp)
     digitalWrite(DIR1, LOW);
   else
     digitalWrite(DIR1, HIGH);
-  pwmSet(PWM1_CH, 255 - abs(sp));
+  pwmSet(PWM1_CH,  abs(sp));
 }
 
 void Motor2_control(int sp)
@@ -222,7 +222,7 @@ void Motor2_control(int sp)
     digitalWrite(DIR2, LOW);
   else
     digitalWrite(DIR2, HIGH);
-  pwmSet(PWM2_CH, 255 - abs(sp));
+  pwmSet(PWM2_CH,  abs(sp));
 }
 
 void Motor3_control(int sp)
@@ -232,7 +232,7 @@ void Motor3_control(int sp)
     digitalWrite(DIR3, LOW);
   else
     digitalWrite(DIR3, HIGH);
-  pwmSet(PWM3_CH, 255 - abs(sp));
+  pwmSet(PWM3_CH,  abs(sp));
 }
 
 void ENC1_READ()

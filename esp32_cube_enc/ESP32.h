@@ -48,17 +48,17 @@ bool vertex_calibrated = false;
 bool calibrated = false;
 bool calibrated_leds = false;
 
-float K1 = 180;
-float K2 = 30.00; 
-float K3 = 1.6;
-float K4 = 0.008;
+float K1 = 450;
+float K2 = 8.00; 
+float K3 = 3.0;
+float K4 = 0.02;
 float zK2 = 8.00;
 float zK3 = 0.30;
 
-float eK1 = 190;
-float eK2 = 31.00; 
-float eK3 = 2.5;
-float eK4 = 0.014;
+float eK1 = 5000;
+float eK2 = 10.00; 
+float eK3 = 4.0;
+float eK4 = 0.025;
 
 int loop_time = 8;
 
