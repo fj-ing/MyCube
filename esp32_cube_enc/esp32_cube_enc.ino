@@ -19,8 +19,8 @@ void setup()
   pinMode(BRAKE, OUTPUT);
   digitalWrite(BRAKE, HIGH);
 
-  for (int i = 0; i <= 255; i += 10)
-  {
+  // LED startup animation
+  for (int i = 0; i <= 255; i += 10) {
     leds[0] = CRGB(i, 0, 0);
     leds[1] = CRGB(i, 0, 0);
     leds[2] = CRGB(i, 0, 0);
@@ -28,8 +28,7 @@ void setup()
     delay(5);
   }
   delay(300);
-  for (int i = 0; i <= 255; i += 10)
-  {
+  for (int i = 0; i <= 255; i += 10) {
     leds[0] = CRGB(0, i, 0);
     leds[1] = CRGB(0, i, 0);
     leds[2] = CRGB(0, i, 0);
@@ -37,8 +36,7 @@ void setup()
     delay(5);
   }
   delay(300);
-  for (int i = 0; i <= 255; i += 10)
-  {
+  for (int i = 0; i <= 255; i += 10) {
     leds[0] = CRGB(0, 0, i);
     leds[1] = CRGB(0, 0, i);
     leds[2] = CRGB(0, 0, i);
@@ -51,28 +49,37 @@ void setup()
   leds[2] = CRGB::Black;
   FastLED.show();
 
+  // Motor 1
   pinMode(DIR1, OUTPUT);
-  pinMode(ENC1_1, INPUT);
-  pinMode(ENC1_2, INPUT);
+  pinMode(ENC1_1, INPUT_PULLUP);  // 加上拉，抗干扰
+  pinMode(ENC1_2, INPUT_PULLUP);
+  enc_count1 = 0;                 // 👈 清零
+  motor1_speed = 0;
   attachInterrupt(ENC1_1, ENC1_READ, CHANGE);
   attachInterrupt(ENC1_2, ENC1_READ, CHANGE);
-  ledcAttach(PWM1, BASE_FREQ, TIMER_BIT); // 直接绑定引脚
-  Motor1_control(0);
+  ledcAttach(PWM1, BASE_FREQ, TIMER_BIT);
+  Motor1_control(0);              // 现在真正输出 0
 
+  // Motor 2
   pinMode(DIR2, OUTPUT);
-  pinMode(ENC2_1, INPUT);
-  pinMode(ENC2_2, INPUT);
+  pinMode(ENC2_1, INPUT_PULLUP);
+  pinMode(ENC2_2, INPUT_PULLUP);
+  enc_count2 = 0;                 // 👈 清零
+  motor2_speed = 0;
   attachInterrupt(ENC2_1, ENC2_READ, CHANGE);
   attachInterrupt(ENC2_2, ENC2_READ, CHANGE);
-  ledcAttach(PWM2, BASE_FREQ, TIMER_BIT); // 直接绑定引脚
+  ledcAttach(PWM2, BASE_FREQ, TIMER_BIT);
   Motor2_control(0);
 
+  // Motor 3
   pinMode(DIR3, OUTPUT);
-  pinMode(ENC3_1, INPUT);
-  pinMode(ENC3_2, INPUT);
+  pinMode(ENC3_1, INPUT_PULLUP);
+  pinMode(ENC3_2, INPUT_PULLUP);
+  enc_count3 = 0;                 // 👈 清零
+  motor3_speed = 0;
   attachInterrupt(ENC3_1, ENC3_READ, CHANGE);
   attachInterrupt(ENC3_2, ENC3_READ, CHANGE);
-  ledcAttach(PWM3, BASE_FREQ, TIMER_BIT); // 直接绑定引脚
+  ledcAttach(PWM3, BASE_FREQ, TIMER_BIT);
   Motor3_control(0);
 
   EEPROM.get(0, offsets);
@@ -92,15 +99,7 @@ void loop()
     SerialTuning();
     angle_calc();
 
-    // Serial.print("AcX: "); Serial.print(AcX);
-    // Serial.print(" | AcY: "); Serial.print(AcY);
-    // Serial.print(" | AcZ: "); Serial.print(AcZ);
-    // Serial.print(" | GyX: "); Serial.print(GyX);
-    // Serial.print(" | GyY: "); Serial.print(GyY);
-    // Serial.print(" | GyZ: "); Serial.print(GyZ);
-    // Serial.print(" | AngleX: "); Serial.print(robot_angleX);
-    // Serial.print(" | AngleY: "); Serial.println(robot_angleY);
-
+    // 读取编码器速度
     motor1_speed = enc_count1;
     enc_count1 = 0;
     motor2_speed = enc_count2;
@@ -133,14 +132,22 @@ void loop()
       gyroX = GyX / 131.0;
       gyroXfilt = alpha * gyroX + (1 - alpha) * gyroXfilt;
 
-      int pwm_X = constrain(eK1 * robot_angleX + eK2 * gyroXfilt + eK3 * motor3_speed + eK4 * motors_speed_X, -255, 255);
+      // 🔧 临时关闭 eK3/eK4，避免正反馈
+      int pwm_X = constrain(eK1 * robot_angleX + eK2 * gyroXfilt, -255, 255);
 
       motors_speed_X += motor3_speed / 5;
+
+      // ✅ 关键：显式停止其他电机！
+      Motor1_control(0);
+      Motor2_control(0);
       Motor3_control(pwm_X);
     }
     else
     {
-      XYZ_to_threeWay(0, 0, 0);
+      // 完全停止
+      Motor1_control(0);
+      Motor2_control(0);
+      Motor3_control(0);
       digitalWrite(BRAKE, LOW);
       motors_speed_X = 0;
       motors_speed_Y = 0;
@@ -150,7 +157,7 @@ void loop()
 
   if (currentT - previousT_2 >= 2000)
   {
-    battVoltage((double)analogRead(VBAT) / 204); // value 204 must be selected by measuring battery voltage!
+    battVoltage((double)analogRead(VBAT) / 204);
     if (!calibrated && !calibrating)
     {
       SerialBT.println("first you need to calibrate the balancing points...");

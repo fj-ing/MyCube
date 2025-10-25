@@ -174,9 +174,9 @@ void angle_calc()
 
 void XYZ_to_threeWay(float pwm_X, float pwm_Y, float pwm_Z)
 {
-  int16_t m1 = round((0.5 * pwm_X - 0.866 * pwm_Y) / 1.37 + pwm_Z);
-  int16_t m2 = round((0.5 * pwm_X + 0.866 * pwm_Y) / 1.37 + pwm_Z);
-  int16_t m3 = -pwm_X / 1.37 + pwm_Z;
+  int16_t m1 = round((0.5 * pwm_X - 0.866 * pwm_Y) / 1.45 + pwm_Z);
+  int16_t m2 = round((0.5 * pwm_X + 0.866 * pwm_Y) / 1.45 + pwm_Z);
+  int16_t m3 = -pwm_X / 1.45 + pwm_Z;
   Motor1_control(m1);
   Motor2_control(m2);
   Motor3_control(m3);
@@ -227,7 +227,7 @@ void Motor2_control(int sp)
 
 void Motor3_control(int sp)
 {
-  sp = sp + motor3_speed;
+  //sp = sp + motor3_speed;
   if (sp < 0)
     digitalWrite(DIR3, LOW);
   else
@@ -277,150 +277,313 @@ void ENC3_READ()
   }
 }
 
+
+// 步长定义（可按需调整）
+const float K1_STEP = 10.0f;
+const float K2_STEP = 0.2f;
+const float K3_STEP = 0.1f;
+
 int Tuning()
 {
-  if (!SerialBT.available())
-    return 0;
-  char param = SerialBT.read(); // get parameter byte
-  if (!SerialBT.available())
-    return 0;
-  char cmd = SerialBT.read(); // get command byte
-  switch (param)
+  if (!SerialBT.available()) return 0;
+  char first = SerialBT.read();
+
+  // 普通参数：p, i, s, c（单字母）
+  if (first == 'c' || first == 'p' || first == 'i' || first == 's')
   {
-  case 'c':
-    if (cmd == '+' && !calibrating)
+    if (!SerialBT.available()) return 0;
+    char cmd = SerialBT.read();
+
+    switch (first)
     {
-      calibrating = true;
-      SerialBT.println("Calibrating on.");
-      SerialBT.println("Set the cube on vertex...");
-      leds[0] = CRGB(250, 250, 0);
-      leds[1] = CRGB(250, 250, 0);
-      leds[2] = CRGB(250, 250, 0);
-      FastLED.show();
-    }
-    if (cmd == '-' && calibrating)
-    {
-      SerialBT.print("X: ");
-      SerialBT.print(AcX);
-      SerialBT.print(" Y: ");
-      SerialBT.print(AcY);
-      SerialBT.print(" Z: ");
-      SerialBT.println(AcZ + 16384);
-      if (abs(AcX) < 2000 && abs(AcY) < 2000)
+    case 'c':
+      if (cmd == '+' && !calibrating)
       {
-        offsets.ID = 96;
-        offsets.acXv = AcX;
-        offsets.acYv = AcY;
-        offsets.acZv = AcZ + 16384;
-        SerialBT.println("Vertex OK.");
-        SerialBT.println("Set the cube on edge...");
-        vertex_calibrated = true;
-        leds[0] = CRGB(0, 250, 250);
-        leds[1] = CRGB(0, 250, 250);
-        leds[2] = CRGB(0, 250, 250);
+        calibrating = true;
+        SerialBT.println("Calibrating on.");
+        SerialBT.println("Set the cube on vertex...");
+        leds[0] = CRGB(250, 250, 0);
+        leds[1] = CRGB(250, 250, 0);
+        leds[2] = CRGB(250, 250, 0);
         FastLED.show();
-        beep();
       }
-      else if (abs(AcX) > 7000 && abs(AcX) < 10000 && abs(AcY) < 2000 && vertex_calibrated)
+      else if (cmd == '-' && calibrating)
       {
-        SerialBT.print("X: ");
-        SerialBT.print(AcX);
-        SerialBT.print(" Y: ");
-        SerialBT.print(AcY);
-        SerialBT.print(" Z: ");
-        SerialBT.println(AcZ + 16384);
-        SerialBT.println("Edge OK.");
-        offsets.acXe = AcX;
-        offsets.acYe = AcY;
-        offsets.acZe = AcZ + 16384;
-        leds[0] = CRGB::Black;
-        leds[1] = CRGB::Black;
-        leds[2] = CRGB::Black;
-        FastLED.show();
-        save();
+        SerialBT.print("X: "); SerialBT.print(AcX);
+        SerialBT.print(" Y: "); SerialBT.print(AcY);
+        SerialBT.print(" Z: "); SerialBT.println(AcZ + 16384);
+        if (abs(AcX) < 2000 && abs(AcY) < 2000)
+        {
+          offsets.ID = 96;
+          offsets.acXv = AcX;
+          offsets.acYv = AcY;
+          offsets.acZv = AcZ + 16384;
+          SerialBT.println("Vertex OK.");
+          SerialBT.println("Set the cube on edge...");
+          vertex_calibrated = true;
+          leds[0] = CRGB(0, 250, 250);
+          leds[1] = CRGB(0, 250, 250);
+          leds[2] = CRGB(0, 250, 250);
+          FastLED.show();
+          beep();
+        }
+        else if (abs(AcX) > 7000 && abs(AcX) < 10000 && abs(AcY) < 2000 && vertex_calibrated)
+        {
+          offsets.acXe = AcX;
+          offsets.acYe = AcY;
+          offsets.acZe = AcZ + 16384;
+          leds[0] = CRGB::Black;
+          leds[1] = CRGB::Black;
+          leds[2] = CRGB::Black;
+          FastLED.show();
+          save();
+          SerialBT.println("Edge OK.");
+        }
+        else
+        {
+          SerialBT.println("The angles are wrong!!!");
+          beep(); beep();
+        }
       }
-      else
-      {
-        SerialBT.println("The angles are wrong!!!");
-        beep();
-        beep();
+      break;
+
+    case 'p': // K1
+      if (cmd == '+') {
+        K1 += K1_STEP;
+        SerialBT.print("K1 = "); SerialBT.println(K1);
+      } else if (cmd == '-') {
+        K1 -= K1_STEP;
+        if (K1 < 0) K1 = 0;
+        SerialBT.print("K1 = "); SerialBT.println(K1);
       }
+      break;
+
+    case 'i': // K2
+      if (cmd == '+') {
+        K2 += K2_STEP;
+        SerialBT.print("K2 = "); SerialBT.println(K2, 3);
+      } else if (cmd == '-') {
+        K2 -= K2_STEP;
+        if (K2 < 0) K2 = 0;
+        SerialBT.print("K2 = "); SerialBT.println(K2, 3);
+      }
+      break;
+
+    case 's': // K3
+      if (cmd == '+') {
+        K3 += K3_STEP;
+        SerialBT.print("K3 = "); SerialBT.println(K3, 3);
+      } else if (cmd == '-') {
+        K3 -= K3_STEP;
+        if (K3 < 0) K3 = 0;
+        SerialBT.print("K3 = "); SerialBT.println(K3, 3);
+      }
+      break;
     }
-    break;
+    return 1;
   }
-  return 1;
+
+  // 处理 'e' 开头的棱边参数（ep, ei, es）
+  else if (first == 'e')
+  {
+    if (!SerialBT.available()) return 0;
+    char param = SerialBT.read();
+    if (!SerialBT.available()) return 0;
+    char cmd = SerialBT.read();
+
+    switch (param)
+    {
+    case 'p': // eK1
+      if (cmd == '+') {
+        eK1 += K1_STEP;
+        SerialBT.print("eK1 = "); SerialBT.println(eK1);
+      } else if (cmd == '-') {
+        eK1 -= K1_STEP;
+        if (eK1 < 0) eK1 = 0;
+        SerialBT.print("eK1 = "); SerialBT.println(eK1);
+      }
+      break;
+
+    case 'i': // eK2
+      if (cmd == '+') {
+        eK2 += K2_STEP;
+        SerialBT.print("eK2 = "); SerialBT.println(eK2, 3);
+      } else if (cmd == '-') {
+        eK2 -= K2_STEP;
+        if (eK2 < 0) eK2 = 0;
+        SerialBT.print("eK2 = "); SerialBT.println(eK2, 3);
+      }
+      break;
+
+    case 's': // eK3
+      if (cmd == '+') {
+        eK3 += K3_STEP;
+        SerialBT.print("eK3 = "); SerialBT.println(eK3, 3);
+      } else if (cmd == '-') {
+        eK3 -= K3_STEP;
+        if (eK3 < 0) eK3 = 0;
+        SerialBT.print("eK3 = "); SerialBT.println(eK3, 3);
+      }
+      break;
+
+    default:
+      // 未知 e 命令，可忽略
+      break;
+    }
+    return 1;
+  }
+
+  return 0; // 未知命令
 }
 
 int SerialTuning()
 {
-  if (!Serial.available())
-    return 0;                 // 改为 Serial
-  char param = Serial.read(); // 改为 Serial
-  if (!Serial.available())
-    return 0;
-  char cmd = Serial.read(); // 改为 Serial
-  switch (param)
+  if (!Serial.available()) return 0;
+  char first = Serial.read();
+
+  // 普通参数：c, p, i, s
+  if (first == 'c' || first == 'p' || first == 'i' || first == 's')
   {
-  case 'c':
-    if (cmd == '+' && !calibrating)
+    if (!Serial.available()) return 0;
+    char cmd = Serial.read();
+
+    switch (first)
     {
-      calibrating = true;
-      Serial.println("Calibrating on.");           // 改为 Serial
-      Serial.println("Set the cube on vertex..."); // 改为 Serial
-      leds[0] = CRGB(250, 250, 0);
-      leds[1] = CRGB(250, 250, 0);
-      leds[2] = CRGB(250, 250, 0);
-      FastLED.show();
-    }
-    if (cmd == '-' && calibrating)
-    {
-      Serial.print("X: ");
-      Serial.print(AcX);
-      Serial.print(" Y: ");
-      Serial.print(AcY);
-      Serial.print(" Z: ");
-      Serial.println(AcZ + 16384); // 改为 Serial
-      if (abs(AcX) < 2000 && abs(AcY) < 2000)
+    case 'c':
+      if (cmd == '+' && !calibrating)
       {
-        offsets.ID = 96;
-        offsets.acXv = AcX;
-        offsets.acYv = AcY;
-        offsets.acZv = AcZ + 16384;
-        Serial.println("Vertex OK.");              // 改为 Serial
-        Serial.println("Set the cube on edge..."); // 改为 Serial
-        vertex_calibrated = true;
-        leds[0] = CRGB(0, 250, 250);
-        leds[1] = CRGB(0, 250, 250);
-        leds[2] = CRGB(0, 250, 250);
+        calibrating = true;
+        Serial.println("Calibrating on.");
+        Serial.println("Set the cube on vertex...");
+        leds[0] = CRGB(250, 250, 0);
+        leds[1] = CRGB(250, 250, 0);
+        leds[2] = CRGB(250, 250, 0);
         FastLED.show();
-        beep();
       }
-      else if (abs(AcX) > 7000 && abs(AcX) < 10000 && abs(AcY) < 2000 && vertex_calibrated)
+      else if (cmd == '-' && calibrating)
       {
-        Serial.print("X: ");
-        Serial.print(AcX);
-        Serial.print(" Y: ");
-        Serial.print(AcY);
-        Serial.print(" Z: ");
-        Serial.println(AcZ + 16384); // 改为 Serial
-        Serial.println("Edge OK.");  // 改为 Serial
-        offsets.acXe = AcX;
-        offsets.acYe = AcY;
-        offsets.acZe = AcZ + 16384;
-        leds[0] = CRGB::Black;
-        leds[1] = CRGB::Black;
-        leds[2] = CRGB::Black;
-        FastLED.show();
-        save();
+        Serial.print("X: "); Serial.print(AcX);
+        Serial.print(" Y: "); Serial.print(AcY);
+        Serial.print(" Z: "); Serial.println(AcZ + 16384);
+        if (abs(AcX) < 2000 && abs(AcY) < 2000)
+        {
+          offsets.ID = 96;
+          offsets.acXv = AcX;
+          offsets.acYv = AcY;
+          offsets.acZv = AcZ + 16384;
+          Serial.println("Vertex OK.");
+          Serial.println("Set the cube on edge...");
+          vertex_calibrated = true;
+          leds[0] = CRGB(0, 250, 250);
+          leds[1] = CRGB(0, 250, 250);
+          leds[2] = CRGB(0, 250, 250);
+          FastLED.show();
+          beep();
+        }
+        else if (abs(AcX) > 7000 && abs(AcX) < 10000 && abs(AcY) < 2000 && vertex_calibrated)
+        {
+          offsets.acXe = AcX;
+          offsets.acYe = AcY;
+          offsets.acZe = AcZ + 16384;
+          leds[0] = CRGB::Black;
+          leds[1] = CRGB::Black;
+          leds[2] = CRGB::Black;
+          FastLED.show();
+          save();
+          Serial.println("Edge OK.");
+        }
+        else
+        {
+          Serial.println("The angles are wrong!!!");
+          beep(); beep();
+        }
       }
-      else
-      {
-        Serial.println("The angles are wrong!!!"); // 改为 Serial
-        beep();
-        beep();
+      break;
+
+    case 'p': // K1
+      if (cmd == '+') {
+        K1 += K1_STEP;
+        Serial.print("K1 = "); Serial.println(K1);
+      } else if (cmd == '-') {
+        K1 -= K1_STEP;
+        if (K1 < 0) K1 = 0;
+        Serial.print("K1 = "); Serial.println(K1);
       }
+      break;
+
+    case 'i': // K2
+      if (cmd == '+') {
+        K2 += K2_STEP;
+        Serial.print("K2 = "); Serial.println(K2, 3);
+      } else if (cmd == '-') {
+        K2 -= K2_STEP;
+        if (K2 < 0) K2 = 0;
+        Serial.print("K2 = "); Serial.println(K2, 3);
+      }
+      break;
+
+    case 's': // K3
+      if (cmd == '+') {
+        K3 += K3_STEP;
+        Serial.print("K3 = "); Serial.println(K3, 3);
+      } else if (cmd == '-') {
+        K3 -= K3_STEP;
+        if (K3 < 0) K3 = 0;
+        Serial.print("K3 = "); Serial.println(K3, 3);
+      }
+      break;
     }
-    break;
+    return 1;
   }
-  return 1;
+
+  // 处理 'e' 开头的棱边参数
+  else if (first == 'e')
+  {
+    if (!Serial.available()) return 0;
+    char param = Serial.read();
+    if (!Serial.available()) return 0;
+    char cmd = Serial.read();
+
+    switch (param)
+    {
+    case 'p': // eK1
+      if (cmd == '+') {
+        eK1 += K1_STEP;
+        Serial.print("eK1 = "); Serial.println(eK1);
+      } else if (cmd == '-') {
+        eK1 -= K1_STEP;
+        if (eK1 < 0) eK1 = 0;
+        Serial.print("eK1 = "); Serial.println(eK1);
+      }
+      break;
+
+    case 'i': // eK2
+      if (cmd == '+') {
+        eK2 += K2_STEP;
+        Serial.print("eK2 = "); Serial.println(eK2, 3);
+      } else if (cmd == '-') {
+        eK2 -= K2_STEP;
+        if (eK2 < 0) eK2 = 0;
+        Serial.print("eK2 = "); Serial.println(eK2, 3);
+      }
+      break;
+
+    case 's': // eK3
+      if (cmd == '+') {
+        eK3 += K3_STEP;
+        Serial.print("eK3 = "); Serial.println(eK3, 3);
+      } else if (cmd == '-') {
+        eK3 -= K3_STEP;
+        if (eK3 < 0) eK3 = 0;
+        Serial.print("eK3 = "); Serial.println(eK3, 3);
+      }
+      break;
+
+    default:
+      break;
+    }
+    return 1;
+  }
+
+  return 0;
 }

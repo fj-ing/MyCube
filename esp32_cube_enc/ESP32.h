@@ -55,7 +55,7 @@ float K4 = 0.02;
 float zK2 = 8.00;
 float zK3 = 0.30;
 
-float eK1 = 5000;
+float eK1 = 30.0;
 float eK2 = 10.00; 
 float eK3 = 4.0;
 float eK4 = 0.025;
@@ -73,7 +73,7 @@ struct OffsetsObj {
 };
 OffsetsObj offsets;
 
-float alpha = 0.7;
+float alpha = 0.05;
 
 int16_t  AcX, AcY, AcZ, AcXc, AcYc, AcZc, GyX, GyY, GyZ;
 float gyroX, gyroY, gyroZ, gyroXfilt, gyroYfilt, gyroZfilt;
